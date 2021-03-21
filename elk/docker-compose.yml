@@ -1,0 +1,68 @@
+version: '3.3'
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.2.0
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - elastic
+    environment:
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - node.name=es01
+     # - cluster.initial_master_nodes=es01
+      - cluster.name=es-singlenode
+      - ELASTIC_PASSWORD=elastic
+      - bootstrap.memory_lock=true
+      - TAKE_FILE_OWNERSHIP=true
+      - network.host=0.0.0.0
+      - discovery.type=single-node
+      - xpack.license.self_generated.type=trial
+      - xpack.security.enabled=true
+      - xpack.monitoring.collection.enabled=true
+      - xpack.security.audit.enabled=true
+      - http.cors.enabled=true
+      - http.cors.allow-origin=*
+      - http.cors.allow-headers=Authorization
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./elasticsearch/data:/usr/share/elasticsearch/data
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/elasticsearch.yml
+      - ./elasticsearch/package:/tmp/package
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.2.0
+    ports:
+      - "4560:4560"
+      - "4561:4561"
+      - "4562:4562"
+      - "4563:4563"
+    networks:
+      - elastic
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+      - ./logstash/plugins:/tmp/plugins
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+    #command: bash -c "logstash -f /pipeline --config.reload.automatic"
+    environment:
+      LS_JAVA_OPTS: "-Xms256m -Xmx256m"
+    depends_on:
+      - elasticsearch
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.2.0
+    ports:
+      - "5601:5601"
+    networks:
+      - elastic
+    environment:
+      i18n.locale: zh-CN
+    volumes:
+      - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml
+      - ./kibana/data:/usr/share/kibana/data
+    depends_on:
+      - elasticsearch
+networks:
+    elastic:
+      driver: bridge
